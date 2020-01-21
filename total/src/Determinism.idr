@@ -143,17 +143,17 @@ pairEq : a = b -> c = d -> (a, c) = (b, d)
 pairEq Refl Refl = Refl
 
 
-valueBigStepEq : Value e1 -> BigStep e1 e2 _ -> e1 = e2
+valueBigStepEq : Value e1 -> BigStep e1 e2 -> e1 = e2
 valueBigStepEq VZero (BStValue _)     = Refl
 valueBigStepEq (VSucc x) (BStValue _) = Refl
 valueBigStepEq (VSucc x) (BStSucc y)  = cong $ valueBigStepEq x y
 valueBigStepEq VAbs (BStValue _)      = Refl
 
 
-bigStepDeterministic : (BigStep e1 e2 v2) -> (BigStep e1 e3 v3) ->
+bigStepDeterministic : (BigStep e1 e2) -> (BigStep e1 e3) ->
                        e2 = e3
--- case split in the following order: (BigStep e1 e2 v2), (BigStep e1 e3 v3)
-bigStepDeterministic (BStRecZero y z) (BStValue v3) impossible
+-- case split in the following order: (BigStep e1 e2), (BigStep e1 e3)
+bigStepDeterministic (BStRecZero y z) (BStValue _) impossible
 --
 bigStepDeterministic (BStRecZero y z) (BStRecZero w s) = bigStepDeterministic z s
 --
@@ -161,41 +161,41 @@ bigStepDeterministic (BStRecZero y z) (BStRecSucc x w) =
   let ih = bigStepDeterministic y x
   in absurd $ zeroNotSucc ih
 --
-bigStepDeterministic (BStRecSucc x y) (BStValue v3) impossible
+bigStepDeterministic (BStRecSucc x y) (BStValue _) impossible
 --
 bigStepDeterministic (BStRecSucc x y) (BStRecZero w s) =
   let ih = bigStepDeterministic x w
   in absurd $ zeroNotSucc $ sym ih
 --
-bigStepDeterministic {e1 = TRec e e10 e11} {e2 = e2} {v2 = v2} (BStRecSucc x y) (BStRecSucc z w) = 
+bigStepDeterministic {e1 = TRec e e10 e11} {e2 = e2} (BStRecSucc x y) (BStRecSucc z w) = 
   let ih = injectiveSucc $ bigStepDeterministic x z
-      y' = replace {P = \x => BigStep (subst x FZ (subst (TRec x e10 e11) FZ e11)) e2 v2} ih y
+      y' = replace {P = \x => BigStep (subst x FZ (subst (TRec x e10 e11) FZ e11)) e2} ih y
   in bigStepDeterministic y' w
 --
-bigStepDeterministic (BStValue v2) (BStValue v3) = Refl
+bigStepDeterministic (BStValue _) (BStValue _) = Refl
 --
-bigStepDeterministic (BStValue v2) (BStApp z w t) impossible
+bigStepDeterministic (BStValue _) (BStApp z w t) impossible
 --
 bigStepDeterministic (BStValue v2) (BStSucc x) = case v2 of
   VAbs      impossible
   VZero     impossible
   VSucc v2' => cong $ valueBigStepEq v2' x
 --  
-bigStepDeterministic (BStValue v2) (BStPredZero y) impossible
+bigStepDeterministic (BStValue _) (BStPredZero y) impossible
 --
-bigStepDeterministic (BStValue v2) (BStPredSucc x) impossible
+bigStepDeterministic (BStValue _) (BStPredSucc x) impossible
 --
-bigStepDeterministic (BStValue v2) (BStIfzZero z w) impossible
+bigStepDeterministic (BStValue _) (BStIfzZero z w) impossible
 --
-bigStepDeterministic (BStValue v2) (BStIfzSucc w s) impossible
+bigStepDeterministic (BStValue _) (BStIfzSucc w s) impossible
 --
-bigStepDeterministic (BStApp w t u) (BStValue v3) impossible
+bigStepDeterministic (BStApp w t u) (BStValue _) impossible
 --
-bigStepDeterministic {e2 = e2} {v2 = v2} (BStApp w t u) (BStApp z s v) = 
+bigStepDeterministic {e2 = e2} (BStApp w t u) (BStApp z s v) = 
   let ih1 = injectiveAbs $ bigStepDeterministic w z
       ih2 = bigStepDeterministic t s
       peq = pairEq ih1 ih2
-      u'  = replace {P = \x => BigStep (subst (snd x) FZ (fst x)) e2 v2} peq u
+      u'  = replace {P = \x => BigStep (subst (snd x) FZ (fst x)) e2} peq u
   in bigStepDeterministic u' v
 --
 bigStepDeterministic (BStSucc x) (BStValue v3) = case v3 of
@@ -205,7 +205,7 @@ bigStepDeterministic (BStSucc x) (BStValue v3) = case v3 of
 --
 bigStepDeterministic (BStSucc x) (BStSucc y) = cong $ bigStepDeterministic x y
 --
-bigStepDeterministic (BStPredZero z) (BStValue v3) impossible
+bigStepDeterministic (BStPredZero z) (BStValue _) impossible
 --
 bigStepDeterministic (BStPredZero z) (BStPredZero y) = Refl
 --
@@ -213,7 +213,7 @@ bigStepDeterministic (BStPredZero z) (BStPredSucc x) =
   let ih = bigStepDeterministic z x
   in absurd $ zeroNotSucc ih
 --
-bigStepDeterministic (BStPredSucc x) (BStValue v3) impossible
+bigStepDeterministic (BStPredSucc x) (BStValue _) impossible
 --
 bigStepDeterministic (BStPredSucc x) (BStPredZero z) = 
   let ih = bigStepDeterministic x z
@@ -221,7 +221,7 @@ bigStepDeterministic (BStPredSucc x) (BStPredZero z) =
 --
 bigStepDeterministic (BStPredSucc x) (BStPredSucc y) = injectiveSucc $ bigStepDeterministic x y
 --
-bigStepDeterministic (BStIfzZero w s) (BStValue v3) impossible
+bigStepDeterministic (BStIfzZero w s) (BStValue _) impossible
 --
 bigStepDeterministic (BStIfzZero w s) (BStIfzZero y z) = bigStepDeterministic s z
 --
@@ -229,7 +229,7 @@ bigStepDeterministic (BStIfzZero w s) (BStIfzSucc z t) =
   let ih = bigStepDeterministic w z
   in absurd $ zeroNotSucc ih
 --
-bigStepDeterministic (BStIfzSucc s t) (BStValue v3) impossible
+bigStepDeterministic (BStIfzSucc s t) (BStValue _) impossible
 --
 bigStepDeterministic (BStIfzSucc s t) (BStIfzZero y z) = 
   let ih = bigStepDeterministic s y

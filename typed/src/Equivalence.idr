@@ -30,8 +30,8 @@ import Term
 --------------------------
 -- Begin: STEP => BIG-STEP
 
-stepToBigStep : Step e1 e2 -> BigStep e2 e3 v ->
-                BigStep e1 e3 v
+stepToBigStep : Step e1 e2 -> BigStep e2 e3 ->
+                BigStep e1 e3
 -- case split in the following order: (Step e1 e2), (BigStep e2 e3)
 stepToBigStep (StApp1 x) (BStValue v) impossible
 --
@@ -91,7 +91,7 @@ stepToBigStep (StIfzSucc x) y = BStIfzSucc (BStValue (VSucc x)) y
 -- Begin: TRANSSTEP => BIG-STEP
 
 transStepToBigStep : (TransStep e1 e2) -> (v : Value e2) ->
-                     BigStep e1 e2 v
+                     BigStep e1 e2
 transStepToBigStep (TStRefl _)    v = BStValue v
 transStepToBigStep (TStTrans x y) v = let ih = transStepToBigStep y v
                                       in stepToBigStep x ih
@@ -141,7 +141,7 @@ congIfz (TStRefl e1)   = TStRefl (TIfz e1 _ _)
 congIfz (TStTrans x y) = TStTrans (StIfz x) (congIfz y)
 
 
-bigStepToTransStep : BigStep e1 e2 v -> (TransStep e1 e2, Value e2)
+bigStepToTransStep : BigStep e1 e2 -> (TransStep e1 e2, Value e2)
 --
 bigStepToTransStep (BStValue v) = (TStRefl _, v)
 --

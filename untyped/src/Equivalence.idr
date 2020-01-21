@@ -30,15 +30,15 @@ import Term
 --------------------------
 -- Begin: STEP => BIG-STEP
 
-stepToBigStep : Step e1 e2 -> BigStep e2 e3 v ->
-                BigStep e1 e3 v
+stepToBigStep : Step e1 e2 -> BigStep e2 e3 ->
+                BigStep e1 e3
 -- case split in the following order: (Step e1 e2), (BigStep e2 e3)
-stepToBigStep (StApp1 x) (BStValue v) impossible
+stepToBigStep (StApp1 x) (BStValue _) impossible
 --
 stepToBigStep (StApp1 x) (BStApp w s1 t1) = let ih = stepToBigStep x w
                                             in BStApp ih s1 t1
 --
-stepToBigStep (StApp2 x z) (BStValue v) impossible
+stepToBigStep (StApp2 x z) (BStValue _) impossible
 --
 stepToBigStep (StApp2 x z) (BStApp s1 t1 u) = let ih = stepToBigStep z t1
                                               in BStApp s1 ih u
@@ -52,18 +52,18 @@ stepToBigStep (StSucc x) (BStValue v) = case v of
 --
 stepToBigStep (StSucc x) (BStSucc y) = BStSucc $ stepToBigStep x y
 --
-stepToBigStep (StPred x) (BStValue v) impossible
+stepToBigStep (StPred x) (BStValue _) impossible
 --
 stepToBigStep (StPred x) (BStPredZero z) = BStPredZero $ stepToBigStep x z
 --
 stepToBigStep (StPred x) (BStPredSucc y) = let ih = stepToBigStep x y 
                                            in BStPredSucc ih
 --
-stepToBigStep StPredZero (BStValue v) = BStPredZero (BStValue VZero)
+stepToBigStep StPredZero (BStValue _) = BStPredZero (BStValue VZero)
 --
 stepToBigStep (StPredSucc x) y = BStPredSucc (BStSucc y)
 --
-stepToBigStep (StIfz x) (BStValue v) impossible
+stepToBigStep (StIfz x) (BStValue _) impossible
 --
 stepToBigStep (StIfz x) (BStIfzZero z w) = let ih = stepToBigStep x z
                                            in BStIfzZero ih w
@@ -84,7 +84,7 @@ stepToBigStep (StIfzSucc x) y = BStIfzSucc (BStValue (VSucc x)) y
 -- Begin: TRANSSTEP => BIG-STEP
 
 transStepToBigStep : (TransStep e1 e2) -> (v : Value e2) ->
-                     BigStep e1 e2 v
+                     BigStep e1 e2
 transStepToBigStep (TStRefl _)    v = BStValue v
 transStepToBigStep (TStTrans x y) v = let ih = transStepToBigStep y v
                                       in stepToBigStep x ih
@@ -128,7 +128,7 @@ congIfz (TStRefl e1)   = TStRefl (TIfz e1 _ _)
 congIfz (TStTrans x y) = TStTrans (StIfz x) (congIfz y)
 
 
-bigStepToTransStep : BigStep e1 e2 v -> (TransStep e1 e2, Value e2)
+bigStepToTransStep : BigStep e1 e2 -> (TransStep e1 e2, Value e2)
 --
 bigStepToTransStep (BStValue v) = (TStRefl _, v)
 --
