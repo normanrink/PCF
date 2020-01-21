@@ -4,43 +4,64 @@ OPT=-O3
 TESTDIR=test
 BINDIR=bin
 
-$(BINDIR)/%.typed: $(TESTDIR)/%.idr
-	@$(IDRIS) -o $@ $< $(OPT) -i typed/src
+TYPEDDIR=typed
+TOTALDIR=total
+UNTYPEDDIR=untyped
 
-$(BINDIR)/%.total: $(TESTDIR)/%.idr
-	@$(IDRIS) -o $@ $< $(OPT) -i total/src
-
-$(BINDIR)/%.untyped: $(TESTDIR)/%.idr
-	@$(IDRIS) -o $@ $< $(OPT) -i untyped/src
 
 .PHONY: mul fact clean
 
 all: mul fact
 
-mul:	$(BINDIR)/St-Mul.typed     \
-	$(BINDIR)/St-Mul.total     \
-	$(BINDIR)/St-Mul.untyped   \
-	$(BINDIR)/BSt-Mul.typed    \
-	$(BINDIR)/BSt-Mul.total    \
-	$(BINDIR)/BSt-Mul.untyped  \
-	$(BINDIR)/Eval-Mul.typed   \
-	$(BINDIR)/Eval-Mul.total   \
-	$(BINDIR)/Eval-Mul.untyped \
-	$(BINDIR)/Env-Mul.total
+$(TYPEDDIR)/src/PCF.ibc:
+	@pushd $(TYPEDDIR) ; $(IDRIS) --build typed.ipkg ; popd
 
-fact:	$(BINDIR)/St-Fact.typed     \
-	$(BINDIR)/St-Fact.total     \
-	$(BINDIR)/St-Fact.untyped   \
-	$(BINDIR)/BSt-Fact.typed    \
-	$(BINDIR)/BSt-Fact.total    \
-	$(BINDIR)/BSt-Fact.untyped  \
-	$(BINDIR)/Eval-Fact.typed   \
-	$(BINDIR)/Eval-Fact.total   \
-	$(BINDIR)/Eval-Fact.untyped \
-	$(BINDIR)/Env-Fact.total
+$(TOTALDIR)/src/PCF.ibc:
+	@pushd $(TOTALDIR) ; $(IDRIS) --build total.ipkg ; popd
+
+$(UNTYPEDDIR)/src/PCF.ibc:
+	@pushd $(UNTYPEDDIR) ; $(IDRIS) --build untyped.ipkg ; popd
+
+$(BINDIR)/typed/%: $(TESTDIR)/%.idr $(TYPEDDIR)/src/PCF.ibc
+	@$(IDRIS) --ibcsubdir $(BINDIR)/typed -o $@ $< $(OPT) -i $(TYPEDDIR)/src
+
+$(BINDIR)/total/%: $(TESTDIR)/%.idr $(TOTALDIR)/src/PCF.ibc
+	@$(IDRIS) --ibcsubdir $(BINDIR)/total -o $@ $< $(OPT) -i $(TOTALDIR)/src
+
+$(BINDIR)/untyped/%: $(TESTDIR)/%.idr $(UNTYPEDDIR)/src/PCF.ibc
+	@$(IDRIS) --ibcsubdir $(BINDIR)/untyped -o $@ $< $(OPT) -i $(UNTYPEDDIR)/src
+
+mul:	$(BINDIR)/typed/St-Mul     \
+	$(BINDIR)/total/St-Mul     \
+	$(BINDIR)/untyped/St-Mul   \
+	$(BINDIR)/typed/BSt-Mul    \
+	$(BINDIR)/total/BSt-Mul    \
+	$(BINDIR)/untyped/BSt-Mul  \
+	$(BINDIR)/typed/Eval-Mul   \
+	$(BINDIR)/total/Eval-Mul   \
+	$(BINDIR)/untyped/Eval-Mul \
+	$(BINDIR)/total/Env-Mul
+
+fact:	$(BINDIR)/typed/St-Fact     \
+	$(BINDIR)/total/St-Fact     \
+	$(BINDIR)/untyped/St-Fact   \
+	$(BINDIR)/typed/BSt-Fact    \
+	$(BINDIR)/total/BSt-Fact    \
+	$(BINDIR)/untyped/BSt-Fact  \
+	$(BINDIR)/typed/Eval-Fact   \
+	$(BINDIR)/total/Eval-Fact   \
+	$(BINDIR)/untyped/Eval-Fact \
+	$(BINDIR)/total/Env-Fact
 
 clean:
 	rm -rf $(BINDIR)
-	rm -f $(TESTDIR)/*.ibc
+
+purge: clean
+	cd $(TYPEDDIR)   ; $(IDRIS) --clean typed.ipkg ; cd -
+	cd $(TOTALDIR)   ; $(IDRIS) --clean total.ipkg ; cd -
+	cd $(UNTYPEDDIR) ; $(IDRIS) --clean untyped.ipkg ; cd -
 
 $(shell mkdir -p $(BINDIR))
+$(shell mkdir -p $(BINDIR)/typed)
+$(shell mkdir -p $(BINDIR)/total)
+$(shell mkdir -p $(BINDIR)/untyped)
