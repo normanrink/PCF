@@ -11,7 +11,7 @@ $(BINDIR)/%.total: $(TESTDIR)/%.idr
 	@$(IDRIS) -o $@ $< $(OPT) -i total/src
 
 $(BINDIR)/%.untyped: $(TESTDIR)/%.idr
-	@$(IDRIS) -o $@ $< $(OPT) -i total/src
+	@$(IDRIS) -o $@ $< $(OPT) -i untyped/src
 
 .PHONY: mul fact clean
 
