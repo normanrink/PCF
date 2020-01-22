@@ -1,19 +1,6 @@
 
 module Determinism
 
---
--- WARNING: The totality checker needs about 
---
---                *** 87 minutes *** 
---
---          to check this file. This seems to
---          be due mostly to the function
---          'bigStepDeterministic'.
---
---          (Time measured on the following system:
---           Idris 1.3.0, Mac OS X 10.11.6,
---           Intel Core i7 2.5GHz, 16GB memory)
---
 
 
 import BigStep
@@ -21,6 +8,7 @@ import Progress
 import Step
 import Subst
 import Term
+import Equivalence
 
 
 %default total
@@ -110,20 +98,15 @@ transStepDeterministic {e2 = e2} v2 (TStTrans x z) v3 (TStTrans y w) =
 
 
 
---
 -- The following proof of the determinism of 'BigStep'
 -- relies on the equivalence of 'Step' and 'BigStep'.
---
--- import Equivalence   -- must go at the top of the file
---
--- bigStepDeterministic : (BigStep e1 e2 v2) ->
---                        (BigStep e1 e3 v3) ->
---                        e2 = e3
--- bigStepDeterministic x y = 
---   let (tst2, v2) = bigStepToTransStep x
---       (tst3, v3) = bigStepToTransStep y
---   in transStepDeterministic v2 tst2 v3 tst3
---
+bigStepDeterministic' : (BigStep e1 e2) ->
+                        (BigStep e1 e3) ->
+                        e2 = e3
+bigStepDeterministic' x y = 
+  let (tst2, v2) = bigStepToTransStep x
+      (tst3, v3) = bigStepToTransStep y
+  in transStepDeterministic v2 tst2 v3 tst3
 
 
 
