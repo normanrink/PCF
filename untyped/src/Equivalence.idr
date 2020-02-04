@@ -4,18 +4,6 @@ module Equivalence
 -- Proof that small-step and big-step semantics for
 -- the untyped lambda calculus are equivalent.
 
---
--- WARNING: The totality checker needs about 
---
---                *** 2 minutes *** 
---
---          to check this file.
---
---          (Time measured on the following system:
---           Idris 1.3.0, Mac OS X 10.11.6,
---           Intel Core i7 2.5GHz, 16GB memory)
---
-
 
 import BigStep
 import Step
