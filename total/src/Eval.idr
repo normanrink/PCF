@@ -60,30 +60,31 @@ eval' (TIfz e1 e2 e3) = case eval' e1 of
 --------------------------------------------------------
 -- Begin: EVALUATOR FORMALLY BASED ON BIG-STEP SEMANTICS
 
-evalBigStep : (e : Term [] t) -> (e' : Term [] t ** BigStep e e')
+evalBigStep : (e : Term [] t) -> (e' : Term [] t ** (Value e', BigStep e e'))
 evalBigStep (TVar i)     = absurd $ FinZAbsurd i
-evalBigStep (TAbs x)     = (TAbs x ** BStValue VAbs)
-evalBigStep (TApp x y)   = let (TAbs ex ** bStx) = evalBigStep x
-                               (ey      ** bSty) = evalBigStep y
-                               (er      ** bStr) = evalBigStep (subst ey FZ ex)
-                           in (er ** BStApp bStx bSty bStr)
+evalBigStep (TAbs x)     = (TAbs x ** (VAbs, BStValue VAbs))
+evalBigStep (TApp x y)   = case evalBigStep x of
+  (ex ** (VZero  , bStx))   impossible
+  (ex ** (VSucc _, bStx))   impossible
+  (TAbs ex ** (VAbs, bStx)) => let (ey ** (_ , bSty)) = evalBigStep y
+                                   (er ** (vr, bStr)) = evalBigStep (subst ey FZ ex)
+                               in (er ** (vr, BStApp bStx bSty bStr))
 evalBigStep (TRec x y z) = case evalBigStep x of
-  (TZero    ** bStx) => let (ey ** bSty) = evalBigStep y
-                        in (ey ** BStRecZero bStx bSty)
-  (TSucc ex ** bStx) => 
-    let (es ** bSts) = evalBigStep (subst ex FZ (subst (TRec ex y z) FZ z))
-    in (es ** BStRecSucc bStx bSts)
-evalBigStep TZero        = (TZero ** BStValue VZero)
-evalBigStep (TSucc x)    = let (ex ** bStx) = evalBigStep x
-                           in (TSucc ex ** BStSucc bStx)
+  (TZero    ** (_, bStx)) => let (ey ** (vy, bSty)) = evalBigStep y
+                             in (ey ** (vy, BStRecZero bStx bSty))
+  (TSucc ex ** (_, bStx)) => let (es ** (vs, bSts)) = evalBigStep (subst ex FZ (subst (TRec ex y z) FZ z))
+                             in (es ** (vs, BStRecSucc bStx bSts))
+evalBigStep TZero        = (TZero ** (VZero, BStValue VZero))
+evalBigStep (TSucc x)    = let (ex ** (vx, bStx)) = evalBigStep x
+                           in (TSucc ex ** (VSucc vx, BStSucc bStx))
 evalBigStep (TPred x)    = case evalBigStep x of
-  (TZero    ** bStx) => (TZero ** BStPredZero bStx)
-  (TSucc ex ** bStx) => (ex    ** BStPredSucc bStx)
+  (TZero    ** (_, bStx)) => (TZero ** (VZero, BStPredZero bStx))
+  (TSucc ex ** (VSucc vx, bStx)) => (ex ** (vx, BStPredSucc bStx))
 evalBigStep (TIfz x y z) = case evalBigStep x of
-  (TZero    ** bStx) => let (ey ** bSty) = evalBigStep y
-                        in (ey ** BStIfzZero bStx bSty)
-  (TSucc ex ** bStx) => let (ez ** bStz) = evalBigStep z
-                        in (ez ** BStIfzSucc bStx bStz)
+  (TZero    ** (_, bStx)) => let (ey ** (vy, bSty)) = evalBigStep y
+                             in (ey ** (vy, BStIfzZero bStx bSty))
+  (TSucc ex ** (VSucc vx, bStx)) => let (ez ** (vz, bStz)) = evalBigStep z
+                                    in (ez ** (vz, BStIfzSucc bStx bStz))
 
 -- End: EVALUATOR FORMALLY BASED ON BIG-STEP SEMANTICS
 ------------------------------------------------------
@@ -94,7 +95,7 @@ evalBigStep (TIfz x y z) = case evalBigStep x of
 -- Begin: EQUIVALENCE OF EVALUATORS
 
 total equivEval : (eval e1) = (e2 ** (v2, tst2)) ->
-                  (evalBigStep e1) = (e3 ** bSt3) ->
+                  (evalBigStep e1) = (e3 ** (v3, bSt3)) ->
                   e2 = e3                                     
 equivEval {v2 = v2} {tst2 = tst2} {bSt3 = bSt3} _ _ = 
   let (tst3, v3) = bigStepToTransStep bSt3
