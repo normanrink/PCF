@@ -21,7 +21,7 @@ module Subst
 --
 --    *** the substitution lemma ***
 --
--- ans casually summarized as 
+-- and casually summarized as 
 -- 
 --    *** substitution preserves type ***.
 --
@@ -233,3 +233,166 @@ subst ts i (TIfz e1 e2 e3) = TIfz (subst ts i e1) (subst ts i e2) (subst ts i e3
 
 -- End: SUBSTITUTION PRESERVES TYPING OF EXPRESSIONS IN THE LAMBDA CALCULUS
 ---------------------------------------------------------------------------
+
+
+
+------------------------------
+-- Begin: STRUCTURAL RELATIONS
+--
+-- Terms always exist in a specific context. As a consequence, terms with different 
+-- contexts cannot be equal. In fact, they cannot even be compared because the contexts
+-- are part of the (Idris) type of a term and therefore comparing terms that exist in
+-- different contexts means attempting to compare Idris expressions at different Idris types.
+--
+-- The following defines relations (data types suffixed with 'R') that hold between
+-- structurally equal terms, even if the terms are typed in different contexts.
+-- The main result this leads to is captured by the function 'ctxREq' which shows
+-- that two terms that are structurally equal and typed in the same context are
+-- in fact equal.
+
+
+-- Finite numbers can be structurally equal even
+-- if subject to different bounds 'm' and 'n':
+data FinR : {m : Nat} -> {n : Nat} ->
+            Fin m -> Fin n -> Type where
+  FRZ : FinR (FZ {k=m}) (FZ {k=n})
+  FRS : FinR i j -> FinR (FS i) (FS j)
+
+
+-- The relation 'FinR' holds, for example, bewteen
+-- a bounded number 'i' and a weakened version of 'i'
+-- where the bound has been weakend with '0':
+weakenZeroFinR : (i : Fin m) -> FinR {m=(m+0)} {n=m} (weakenN 0 i) i
+weakenZeroFinR FZ      = FRZ
+weakenZeroFinR (FS i') = FRS $ weakenZeroFinR i'
+
+    
+-- If 'FinR' holds between finite numbers that are subject
+-- to the same bound 'n', then the numbers are equal:
+finREq : (i : Fin n) -> (j : Fin n) -> FinR i j -> i = j
+finREq FZ      FZ      FRZ      = Refl
+finREq (FS i') (FS j') (FRS fr) = cong $ finREq i' j' fr
+
+
+-- The relation 'TermCtxR' holds for terms that
+-- are structurally equal even if typed in different
+-- contexts 'ctx1' and 'ctx2':
+data TermCtxR : {ctx1 : Context m} -> {ctx2: Context n} ->
+                Term ctx1 t -> Term ctx2 t -> Type where
+  TCRVar  : {prf1 : index i ctx1 = t} -> {prf2 : index j ctx2 = t} ->
+            FinR i j -> 
+            TermCtxR {ctx1=ctx1} {ctx2=ctx2} 
+                     (TVar {ctx=ctx1} i {prf=prf1}) 
+                     (TVar {ctx=ctx2} j {prf=prf2})
+  --
+  TCRAbs  : TermCtxR {ctx1=(t::ctx1')} {ctx2=(t::ctx2')} e e' ->
+            TermCtxR {ctx1=ctx1'} {ctx2=ctx2'} (TAbs e) (TAbs e')
+  --
+  TCRApp  : TermCtxR e1 e1' -> TermCtxR e2 e2' ->
+            TermCtxR (TApp e1 e2) (TApp e1' e2')
+  --
+  TCRFix  : TermCtxR e e' -> TermCtxR (TFix e) (TFix e')
+  --
+  TCRZero : TermCtxR TZero TZero
+  --
+  TCRSucc : TermCtxR e e' -> 
+            TermCtxR (TSucc e) (TSucc e')
+  --
+  TCRPred : TermCtxR e e' -> TermCtxR (TPred e) (TPred e')
+  --
+  TCRIfz  : TermCtxR e1 e1' -> TermCtxR e2 e2' -> TermCtxR e3 e3' ->
+            TermCtxR (TIfz e1 e2 e3) (TIfz e1' e2' e3')
+
+
+-- Structural equality of terms 'e1' and 'e2' in the
+-- same context 'ctx' implies equality 'e1 = e2:
+ctxREq : (e1 : Term ctx t) -> (e2 : Term ctx t) -> TermCtxR e1 e2 -> e1 = e2
+--
+ctxREq {ctx} {t} (TVar i {prf=prf1}) (TVar j {prf=prf2}) (TCRVar fr) = 
+  case finREq i j fr of
+       Refl => case prf1 of
+                    Refl => case prf2 of
+                                 Refl => Refl
+               -- By matching on the equality proofs 'prf1' and 'prf2' one
+               -- effectively ends up using "uniqueness of identity proofs":
+               -- Both proofs are matched to the same constructor 'Refl',
+               -- and this causes Idris to refine the two arguments of 'ctxREq'
+               -- to identical (Idris) expressions, i.e. 'TVar i {prf=Refl}'.
+--
+ctxREq (TAbs e) (TAbs e') (TCRAbs r) = cong $ ctxREq e e' r
+--
+ctxREq (TApp e1 e2) (TApp e1' e2') (TCRApp r1 r2) = 
+  let eq1 = ctxREq e1 e1' r1
+      eq2 = ctxREq e2 e2' r2
+  in rewrite eq1 in rewrite eq2 in Refl
+--
+ctxREq (TFix e) (TFix e') (TCRFix r) = cong $ ctxREq e e' r
+--
+ctxREq TZero TZero TCRZero = Refl
+--
+ctxREq (TSucc e) (TSucc e') (TCRSucc r) = cong $ ctxREq e e' r
+--
+ctxREq (TPred e) (TPred e') (TCRPred r) = cong $ ctxREq e e' r
+--
+ctxREq (TIfz e1 e2 e3) (TIfz e1' e2' e3') (TCRIfz r1 r2 r3) =
+  let eq1 = ctxREq e1 e1' r1
+      eq2 = ctxREq e2 e2' r2
+      eq3 = ctxREq e3 e3' r3
+  in rewrite eq1 in rewrite eq2 in rewrite eq3 in Refl
+
+
+-- Weakening the context 'ctx' of a term 'e' with the empty context '[]'
+-- retains the term's structure, i.e. the relation 'TermCtxR' holds
+-- between the original term and the weakend one:
+weakenEmptyCtxR : (e : Term ctx t) -> 
+                  TermCtxR {ctx1=(ctx++[])} {ctx2=ctx} (weakenContext ctx [] e) e
+--
+weakenEmptyCtxR {ctx} (TVar i {prf}) = TCRVar {ctx1=(ctx++[])} {ctx2=ctx} {prf2=prf}
+                                              (weakenZeroFinR i)
+--                                         
+weakenEmptyCtxR (TAbs e)        = TCRAbs (weakenEmptyCtxR e)
+weakenEmptyCtxR (TApp e1 e2)    = TCRApp (weakenEmptyCtxR e1) (weakenEmptyCtxR e2)
+weakenEmptyCtxR (TFix e)        = TCRFix (weakenEmptyCtxR e)
+weakenEmptyCtxR TZero           = TCRZero
+weakenEmptyCtxR (TSucc e)       = TCRSucc (weakenEmptyCtxR e)
+weakenEmptyCtxR (TPred e)       = TCRPred (weakenEmptyCtxR e)
+weakenEmptyCtxR (TIfz e1 e2 e3) = TCRIfz (weakenEmptyCtxR e1)
+                                         (weakenEmptyCtxR e2)
+                                         (weakenEmptyCtxR e3)
+
+
+-- Finally, the previous developments of structural equality can be
+-- used to show that a term 'e' remains unchanged when its context
+-- is weakend with the empty context '[]':
+weakenEmptyWithEmpty : (e : Term [] t) -> weakenContext [] [] e = e
+weakenEmptyWithEmpty e = let wCtxR = weakenEmptyCtxR e
+                         in ctxREq (weakenContext [] [] e) e wCtxR
+
+
+-- As a consequence, substituting a term 'e' into a single 
+-- variable 'TVar FZ' can now be shown to give back the term 'e':
+substInVar : (e : Term [] t) -> 
+             subst {ctx=[]} {s=t} {t=t} e FZ (TVar FZ) = e            
+substInVar e = weakenEmptyWithEmpty e
+
+
+-- Define 'omega' to be the diverging term that
+-- is the fix-point of the identity function:
+omega : Term [] TyNat
+omega = TFix (TAbs $ TVar FZ)
+
+
+-- To show (later) that 'omega' diverges, one needs the result that
+-- substituting 'omega' into a single variable 'TVar FZ' reproduces
+-- the term 'omega' itself: 
+substOmega : subst {ctx=[]} {s=TyNat} {t=TyNat} Subst.omega FZ (TVar FZ) = Subst.omega
+-- Note that while 'substOmega' is a special case of the more general
+-- result 'substInVar' (see above), the general result is in fact not 
+-- needed. This is because the Idris type checker can evaluate
+-- 'weakenContext _ _ omega' (resulting from 'subst'), but it cannot
+-- evaluate 'weakenContext _ _ e' for a variable 'e' because 'weakenContext'
+-- is defined by recursion on the structure of 'e'.
+substOmega = Refl
+
+-- End: STRUCTURAL RELATIONS
+----------------------------
