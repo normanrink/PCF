@@ -104,3 +104,78 @@ irreducibleValue e notStep = case progress e of
 
 -- End: VALUE <=> IRREDUCIBLE
 -----------------------------
+
+
+
+------------------------------------------
+-- Begin: DIVERGENCE OF TERM 'Subst.omega'
+
+-- Term 'omega' steps to itself in one step:
+stepOmega : Step Subst.omega Subst.omega
+stepOmega = let st = StFixBeta {t=TVar {ctx=[TyNat]} FZ}
+            in replace {P = \x => Step Subst.omega x} substOmega st
+
+
+-- That 'omega' steps to itself under the reflexive,
+-- transitive closure of 'Step' is trivial:
+transStepOmega : TransStep Subst.omega Subst.omega
+transStepOmega = TStRefl _
+
+
+-- Term 'omega' steps to nothing but itself:
+-- (This could also be derived as a consequence of determinism of 'Step'.)
+stepOmegaOnly : (e : Term [] TyNat) -> Step Subst.omega e -> e = Subst.omega            
+stepOmegaOnly (TFix _) (StFix st) = absurd $ valueIrreducible (TAbs $ TVar FZ) VAbs st
+stepOmegaOnly (subst (TFix (TAbs (TVar FZ))) FZ (TVar FZ)) StFixBeta = substOmega
+
+
+-- To extend the previous result 'stepOmegaOnly' to the transitive closure
+-- of the 'Step' relation, an indexed version of 'TransStep' is needed:
+data TransStepN : Nat -> Term [] t -> Term [] t -> Type where
+   TStNRefl   : (e : Term [] t) -> TransStepN Z e e
+   TStNTrans  : {e : Term [] t} -> {e' : Term [] t} -> {e'' : Term [] t} ->
+                Step e e' -> TransStepN n e' e'' -> TransStepN (S n) e e''
+
+
+transStepFromN : TransStepN n e1 e2 -> TransStep e1 e2
+transStepFromN (TStNRefl e1)       = TStRefl e1
+transStepFromN (TStNTrans st tstn) = TStTrans st (transStepFromN tstn)
+
+
+transStepToN : TransStep e1 e2 -> (n : Nat ** TransStepN n e1 e2)
+transStepToN (TStRefl e1)      = (Z ** TStNRefl e1)
+transStepToN (TStTrans st tst) = let (m ** tstn) = transStepToN tst
+                                 in ((S m) ** TStNTrans st tstn)
+
+
+transStepNOmegaOnly : (e : Term [] TyNat) -> (n : Nat) -> 
+                      TransStepN n Subst.omega e -> e = Subst.omega
+transStepNOmegaOnly _ Z     (TStNRefl _)        = Refl
+transStepNOmegaOnly e (S k) (TStNTrans st tstk) = 
+  let eq    = stepOmegaOnly _ st 
+      tstk' = replace {P = \x => TransStepN k x e} eq tstk
+  in transStepNOmegaOnly _ k tstk'
+
+
+-- Finally, the fact that 'omega' only steps to itself is proven
+-- by appealing to the indexed version of the transitive closure:
+-- (An induction argument analogous to the one in 'transStepNOmegaOnly'
+-- is not accepted by Idris' totality checker. Induction would proceed on
+-- the structure of the 'TransStep omega e' argument, and the induction
+-- hypothesis would be applied to the second argument of the 'TStTrans'
+-- constructor, which would again have the type 'TransStep omega e' but
+-- only after rewriting with the equation obtained from 'stepOmegaOnly'.)
+transStepOmegaOnly : (e : Term [] TyNat) -> TransStep Subst.omega e -> e = Subst.omega
+transStepOmegaOnly e tst = let (n ** tstn) = transStepToN tst
+                           in transStepNOmegaOnly e n tstn
+
+
+divergenceOmega : TransStep Subst.omega e -> (Value e -> Void)
+divergenceOmega {e} tst v = let eq = transStepOmegaOnly e tst
+                            in case (replace {P = \x => Value x} eq v) of
+                               VZero     impossible
+                               (VSucc _) impossible
+                               VAbs      impossible
+
+-- End: DIVERGENCE OF TERM 'Subst.omega'
+----------------------------------------

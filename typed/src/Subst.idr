@@ -371,21 +371,21 @@ weakenEmptyWithEmpty e = let wCtxR = weakenEmptyCtxR e
 
 -- As a consequence, substituting a term 'e' into a single 
 -- variable 'TVar FZ' can now be shown to give back the term 'e':
-substInVar : (e : Term [] t) -> 
-             subst {ctx=[]} {s=t} {t=t} e FZ (TVar FZ) = e            
+export substInVar : (e : Term [] t) -> 
+                    subst {ctx=[]} {s=t} {t=t} e FZ (TVar FZ) = e            
 substInVar e = weakenEmptyWithEmpty e
 
 
 -- Define 'omega' to be the diverging term that
 -- is the fix-point of the identity function:
-omega : Term [] TyNat
+public export omega : Term [] TyNat
 omega = TFix (TAbs $ TVar FZ)
 
 
 -- To show (later) that 'omega' diverges, one needs the result that
 -- substituting 'omega' into a single variable 'TVar FZ' reproduces
 -- the term 'omega' itself: 
-substOmega : subst {ctx=[]} {s=TyNat} {t=TyNat} Subst.omega FZ (TVar FZ) = Subst.omega
+export substOmega : subst {ctx=[]} {s=TyNat} {t=TyNat} Subst.omega FZ (TVar FZ) = Subst.omega
 -- Note that while 'substOmega' is a special case of the more general
 -- result 'substInVar' (see above), the general result is in fact not 
 -- needed. This is because the Idris type checker can evaluate
