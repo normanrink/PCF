@@ -1,0 +1,13 @@
+package conventional
+
+sourcedir = src
+modules = BigStep
+	, Determinism
+	, Equivalence
+	, Eval
+	, PCF
+	, Progress
+	, Step
+	, Subst
+	, Term
+
