@@ -6,6 +6,7 @@ module Equivalence
 
 
 import BigStep
+import Progress
 import Step
 import Subst
 import Term
@@ -177,3 +178,17 @@ bigStepToTransStep (BStIfzSucc w s) =
 
 
 
+---------------------------------------------------------
+-- Begin: DIVERGENCE OF TERM 'Subst.omega' UNDER BIG-STEP
+
+-- With equivalence of big-step and small-step semantics
+-- the proof that 'omega' diverges under big-step semantics
+-- can of course be simplified significantly (by relying on
+-- the corresponding proof of divergence of 'omega' under
+-- small-step semantics):
+divergenceOmega : BigStep Subst.omega e -> Void
+divergenceOmega {e} bst = let (tst, v) = bigStepToTransStep bst 
+                          in Progress.divergenceOmega tst v
+                          
+-- End: DIVERGENCE OF TERM 'Subst.omega' UNDER BIG-STEP
+-------------------------------------------------------
