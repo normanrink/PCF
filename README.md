@@ -9,21 +9,32 @@ In bringing up these interpreters together with their certificates, the standard
 From this the certified interpreters follow easily.
 
 Additional meta-theory is established, namely determinism for small-step and big-step evaluation relations and the equivalence of small-step and bis-step semantics.
+Moreover, co-inductive small-step and big-step semantics for PCF are also defined and their relationship between each other and also with the corresponding inductive semantics is studied, following parts of [1].
 
 #### Lambda calculi 
 
 The main object of study is a simply-typed lambda calculus with natural numbers and general recursion.
 This calculus is commonly known as Plotkin’s PCF.
-The developments that are worked out for PCF are repeated for a simply-typed lambda calculus with only primitive recursion, known as Gödel’s T, and for the untyped lambda calculus.
+The developments that are worked out for PCF are repeated for a simply-typed lambda calculus with only primitive recursion, known as Gödel’s T, for the untyped lambda calculus, and for PCF with co-inductively defined semantics.
 
 
 #### Project structure
 
 ```
-typed/src   --- Idris sources for the certified PCF interpreters and meta-theory.
-total/src   --- Idris sources for the analogous developments for Gödel’s T.
-untyped/src --- Idris sources for the untyped lambda calculus.
-test        --- Tests that execute simple functions on natural numbers.
+typed/src         --- Idris sources for the certified PCF interpreters and meta-theory.
+total/src         --- Idris sources for the analogous developments for Gödel’s T.
+untyped/src       --- Idris sources for the untyped lambda calculus.
+conventional/src  --- Idris sources for a development of PCF analogous to the one in 'typed/src' except
+                      with a more conventional treatment of de Bruijn indices. Here, "conventional"
+                      means that contexts are lists of (object-language) types and that a de Bruijn index
+                      constitutes proof that an entry in the context has a certain type. (The treatment
+                      in 'typed/src' defines contexts as fixed length vectors of types; and a de Bruijn
+                      index is indeed just an index into this vector, albeit with an equality proof for
+                      the type at the given index in the context.)
+codata/src        --- Idris sources for the development of PCF with both inductive *and* co-inductive
+                      semantics. (Non-)Equivalences between the different semantics are studied by
+                      considering diverging PCF terms.
+test              --- Tests that execute simple functions on natural numbers.
 ```
 In each calculus the functions addition, multiplication, and factorial are implemented.
 Several simple test programs, located in the `test` folder, execute these functions using the different interpreters that are available for each of the calculi.
@@ -55,6 +66,6 @@ this interprets terms in the calculus as values in Idris;
 and the Idris totality checker verifies that this interpreter is indeed a total function.
 
 
-#### Bug reports & suggestion
+#### Reference
 
-Please report bugs and suggestions to norman.rink@tu-dresden.de.
+[1] Xavier Leroy and Hervé Grall. 2009. [Coinductive big-step operational semantics](https://doi.org/10.1016/j.ic.2007.12.004). Inf. Comput. 207, 2 (February 2009), 284–304. 
