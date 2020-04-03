@@ -10,9 +10,9 @@ module Subst
 --
 --    "Given a context 'ctx' and a variable with
 --     de Bruijn index 'i'. Given further the terms
---       ts : Term [] s, and
+--       ts : Term sctx s, and
 --       tt : Term (insertAt i s ctx) t.
---     Then 'subst ts i tt' has type 't' in context 'ctx'."
+--     Then 'subst ts i tt' has type 't' in context '(ctx++sctx)'."
 --
 -- Note that 'subst ts i tt' is typically written as "tt[ts/(TVar i)]".
 -- 
@@ -178,6 +178,60 @@ tightenBound {ctx = (x::xs)} (FS j') {i = (FS i')} lt eq =
   let (j_ ** eq_) = tightenBound {ctx = xs} j' (finLtPred lt) eq
   in (FS j_ ** pushLemma x eq_)
 
+
+-- When adding variables in 'ctx' in the middle of
+-- a context 'ctx1++ctx2', de Bruijn indices must
+-- be adjusted accordingly:
+shift : {ctx1 : Context n1} -> {ctx2 : Context n2} -> {i : Fin (n1+n2)} ->
+        (ctx : Context n) -> index i (ctx1++ctx2) = t ->
+        (i' : Fin (n1+(n+n2)) ** index i' (ctx1++(ctx++ctx2)) = t)        
+shift {ctx1 = []}         {i}         []       eq = (i ** eq)
+--
+shift {ctx1 = []}         {i}         (c::ctx) eq = 
+  let (i' ** eq') = shift {ctx1=[]} ctx eq
+  in (FS i' ** eq')
+shift {ctx1 = (_::ctx1')} {i = FZ}    ctx      eq = (FZ ** eq)
+--
+shift {ctx1 = (_::ctx1')} {i = FS i'} ctx      eq = 
+  let (i' ** eq') = shift {ctx1=ctx1'} ctx eq
+  in (FS i' ** eq')
+
+
+shiftTerm : (ctx : Context n) -> Term (ctx1++ctx2) t ->
+            Term (ctx1++(ctx++ctx2)) t            
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx (TVar i {prf}) = 
+  let (i' ** prf') = shift {ctx1=ctx1} {ctx2=ctx2} ctx prf
+  in TVar i' {prf=prf'}
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} {t = t1 :->: t2} ctx (TAbs e) =
+  let e' = shiftTerm {ctx1=(t1::ctx1)} {ctx2=ctx2} ctx e
+  in TAbs e'
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx (TApp e1 e2) =
+  let e1' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e1
+      e2' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e2
+  in TApp e1' e2'
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx (TFix e) =
+  let e' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e
+  in TFix e'
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx TZero = TZero
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx (TSucc e) =
+  let e' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e
+  in TSucc e'
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx (TPred e) =
+  let e' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e
+  in TPred e'
+--
+shiftTerm {n = n} {ctx1 = ctx1} {ctx2 = ctx2} ctx (TIfz e1 e2 e3) =
+  let e1' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e1
+      e2' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e2
+      e3' = shiftTerm {ctx1=ctx1} {ctx2=ctx2} ctx e3
+  in TIfz e1' e2' e3'
+
 -- End: TECHNICAL LEMMATA ABOUT INDEXING INTO MODIFIED CONTEXTS
 ---------------------------------------------------------------
 
@@ -186,11 +240,12 @@ tightenBound {ctx = (x::xs)} (FS j') {i = (FS i')} lt eq =
 -----------------------------------------------------------------------------
 -- Begin: SUBSTITUTION PRESERVES TYPING OF EXPRESSIONS IN THE LAMBDA CALCULUS
 
-subst_var : Term [] s ->        -- Term of type 's' is subtituted in.
-            (i : Fin (S n)) ->  -- The i-th variable (Var i) is substituted for.
-            (j : Fin (S n)) ->  -- Substitution takes place inside the term (Var j).
-            index j (insertAt i s ctx) = t ->
-            Term ctx t
+subst_var' : Term sctx s ->      -- Term of type 's' is subtituted in.
+             (i : Fin (S n)) ->  -- The i-th variable (Var i) is substituted for.
+             (j : Fin (S n)) ->  -- Substitution takes place inside the term (Var j).
+             index j (insertAt i s ctx) = t ->
+             Term (ctx++sctx) t
+subst_var' {sctx} {ctx} {s} {t} ts i j prf = case finCmpDec i j of
 --
 -- An actual substitution occurs only if "i = j".
 --
@@ -198,32 +253,37 @@ subst_var : Term [] s ->        -- Term of type 's' is subtituted in.
 -- in the returned expression 'TVar _ {prf}' has to be 
 -- adjusted to account for the fact that the context has
 -- been shortened from (insertAt s i ctx) to 'ctx'.
-subst_var {ctx} {s} ts i j prf = case finCmpDec i j of
-  CmpEq eq => let ts' = weakenContext [] ctx ts
-              in rewrite (lookupInserted eq prf) in ts'
+  CmpEq eq => let eq' = lookupInserted eq prf
+                  ts' = shiftTerm {ctx1 = []} {ctx2 = sctx} ctx ts
+              in rewrite eq' in ts'
   CmpLt lt => case j of
-    FZ    => absurd $ finNotLtZ lt                   
-    FS j' => TVar j' {prf = shiftDown lt prf}
-  CmpGt gt => case i of
+    FZ    => absurd $ finNotLtZ lt
+    FS j' => let t' = TVar j' {ctx = ctx} {prf = shiftDown lt prf}
+             in weakenContext ctx sctx t'
+  CmpGt gt => case i of 
     FZ    => absurd $ finNotLtZ gt
     FS i' => let (j_ ** prf_) = tightenBound j gt prf
-             in TVar j_ {prf = prf_}
+                 t' = TVar j_ {ctx = ctx} {prf = prf_}
+             in weakenContext ctx sctx t'
 
 
-export subst : Term [] s ->                  -- Term of type 's' is substituted in.
+export subst : Term sctx s ->                -- Term of type 's' is substituted in.
                (i : Fin (S n)) ->            -- The i-th varibale (Var i) is substituted for.
                Term (insertAt i s ctx) t ->  -- Substitution takes place inside this
                                              -- term of type 't'
-               Term ctx t                    -- The resulting term is again of type 't'.
+               Term (ctx++sctx) t            -- The resulting term is again of type 't'.
 --
 -- The hard part is substitution in expressions that 
 -- are variables, i.e. substitution in 'Var j'.
-subst ts i (TVar j {prf}) = subst_var ts i j prf
+subst ts i (TVar j {prf}) = subst_var' ts i j prf
 --
 -- Substitution in expressions that are not variables
 -- is handled by recursing over (and substituting in)
 -- subexpressions:
-subst ts i (TAbs e)        = TAbs (subst ts (FS i) e)
+--
+subst {ctx} {t = t1:->:t2} ts i (TAbs e) = 
+  TAbs $ subst {ctx=t1::ctx} ts (FS i) e
+--
 subst ts i (TApp e1 e2)    = TApp (subst ts i e1) (subst ts i e2)
 subst ts i (TFix e)        = TFix (subst ts i e)
 subst _  _ TZero           = TZero
@@ -367,13 +427,6 @@ weakenEmptyCtxR (TIfz e1 e2 e3) = TCRIfz (weakenEmptyCtxR e1)
 weakenEmptyWithEmpty : (e : Term [] t) -> weakenContext [] [] e = e
 weakenEmptyWithEmpty e = let wCtxR = weakenEmptyCtxR e
                          in ctxREq (weakenContext [] [] e) e wCtxR
-
-
--- As a consequence, substituting a term 'e' into a single 
--- variable 'TVar FZ' can now be shown to give back the term 'e':
-export substInVar : (e : Term [] t) -> 
-                    subst {ctx=[]} {s=t} {t=t} e FZ (TVar FZ) = e            
-substInVar e = weakenEmptyWithEmpty e
 
 
 -- Define 'omega' to be the diverging term that
