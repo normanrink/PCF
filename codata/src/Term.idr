@@ -10,9 +10,6 @@ module Term
 -- named but identified by their de Bruijn index.
 
 
-import Data.Fin
-
-
 %default total
 %access public export
 
