@@ -9,11 +9,12 @@ TOTALDIR=total
 UNTYPEDDIR=untyped
 CONVENTIONALDIR=conventional
 CODATADIR=codata
+TOTALITYDIR=totality
 
 
-.PHONY: mul fact codata clean purge
+.PHONY: mul fact codata totality clean purge
 
-all: mul fact codata
+all: mul fact codata totality
 
 
 $(TYPEDDIR)/src/PCF.ibc:
@@ -30,6 +31,9 @@ $(CONVENTIONALDIR)/src/PCF.ibc:
 
 codata:
 	@pushd $(CODATADIR) ; $(IDRIS) --build codata.ipkg ; popd
+
+totality:
+	@pushd $(TOTALITYDIR) ; $(IDRIS) --build totality.ipkg ; popd
 
 
 $(BINDIR)/typed/%: $(TESTDIR)/%.idr $(TYPEDDIR)/src/PCF.ibc
@@ -82,6 +86,7 @@ purge: clean
 	cd $(UNTYPEDDIR)      ; $(IDRIS) --clean untyped.ipkg      ; cd -
 	cd $(CONVENTIONALDIR) ; $(IDRIS) --clean conventional.ipkg ; cd -
 	cd $(CODATADIR)       ; $(IDRIS) --clean codata.ipkg       ; cd -
+	cd $(TOTALITYDIR)     ; $(IDRIS) --clean totality.ipkg     ; cd -
 
 $(shell mkdir -p $(BINDIR))
 $(shell mkdir -p $(BINDIR)/typed)
@@ -89,3 +94,4 @@ $(shell mkdir -p $(BINDIR)/total)
 $(shell mkdir -p $(BINDIR)/untyped)
 $(shell mkdir -p $(BINDIR)/conventional)
 $(shell mkdir -p $(BINDIR)/codata)
+$(shell mkdir -p $(BINDIR)/totality)

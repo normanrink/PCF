@@ -1,0 +1,15 @@
+package typed
+
+sourcedir = src
+modules = Determinism
+	, Eval
+	, PnP
+	, MSubst
+	, Normalization
+	, R
+	, Step
+	, Subst
+	, SubstLemmas
+	, Term
+	, Typing
+
