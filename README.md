@@ -4,11 +4,11 @@
 The main goal of this development are implementations of lambda calculus interpreters that are certified correct with respect to independently specified evaluation semantics.
 
 The interpreters are implemented as functions that evaluate lambda calculus terms.
-Since Idris is a dependently-typed language, the interpreter functions can be given expressive type signatures that amount to certificates of correctness.
+Since [Idris](https://www.idris-lang.org/) is a dependently-typed language, the interpreter functions can be given expressive type signatures that amount to certificates of correctness.
 In bringing up these interpreters together with their certificates, the standard substitution lemma and progress theorem are established as total functions in Idris.
 From this the certified interpreters follow easily.
 
-Additional meta-theory is established, namely determinism for small-step and big-step evaluation relations and the equivalence of small-step and bis-step semantics.
+Additional meta-theory is established, namely determinism for small-step and big-step evaluation relations and the equivalence of small-step and big-step semantics.
 Moreover, co-inductive small-step and big-step semantics for PCF are also defined and their relationship between each other and also with the corresponding inductive semantics is studied, following parts of [1].
 
 #### Lambda calculi 
@@ -34,6 +34,10 @@ conventional/src  --- Idris sources for a development of PCF analogous to the on
 codata/src        --- Idris sources for the development of PCF with both inductive *and* co-inductive
                       semantics. (Non-)Equivalences between the different semantics are studied by
                       considering diverging PCF terms.
+totality/src      --- Development of the standard proof of totality for Gödel's T. The standard argument
+                      relies on a (unary) logical relation. Unlike the devlopments in other source folders,
+                      the development in 'totality/src' is based on untyped lambda calculus terms and
+                      introduces the typing judgment as a separate (Idris) data type.
 test              --- Tests that execute simple functions on natural numbers.
 ```
 In each calculus the functions addition, multiplication, and factorial are implemented.
@@ -55,6 +59,9 @@ To build the test programs for all available interpreters in each of the calculi
 in the top-level folder.
 This produces a new subfolder `bin` containing the executable binaries for the tests.
 
+Note that type checking and compiling of Idris source files has been tested with [Idris version 1.3.0](https://github.com/idris-lang/Idris-dev).
+(Meanwhile, [Idris 2](https://github.com/idris-lang/Idris2) is also available.)
+
 
 #### Notes on totality
 
@@ -64,8 +71,12 @@ This is proven in the present project by relying on meta-theoretic properties of
 an environment-based interpreter is implemented for Gödel’s T;
 this interprets terms in the calculus as values in Idris;
 and the Idris totality checker verifies that this interpreter is indeed a total function.
+An alternative proof of totality for Gödel's T is developed in the subfolder `totality`.
+This is the standard proof based on a (unary) logical relation, cf. Chapter 12 of [2].
 
 
-#### Reference
+#### References
 
-[1] Xavier Leroy and Hervé Grall. 2009. [Coinductive big-step operational semantics](https://doi.org/10.1016/j.ic.2007.12.004). Inf. Comput. 207, 2 (February 2009), 284–304. 
+[1] Xavier Leroy and Hervé Grall. 2009. [Coinductive big-step operational semantics](https://doi.org/10.1016/j.ic.2007.12.004). Inf. Comput. 207, 2 (February 2009), 284–304.
+
+[2] Benjamin C. Pierce. 2002. [Types and Programming Languages](https://www.cis.upenn.edu/~bcpierce/tapl/). Cambridge, MA, USA: The MIT Press.
