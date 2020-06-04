@@ -78,8 +78,8 @@ progress (TIfz e1 e2 e3) (TyIfz ty1 ty2 ty3) =
     (Right (_ ** st)) => let st' = StIfz st
                          in Right (_ ** st')
 
--- End: PROGRESS (AND PRESERVATION)
------------------------------------
+-- End: PROGRESS
+----------------
 
 
 
